@@ -37,10 +37,10 @@ const LoginSchema = new Schema({
     type: String,
     default: "app",
   },
-  //   status: {
-  //     type: String,
-  //     default: "verify",
-  //   },
+  status: {
+    type: String,
+    default: "verified",
+  },
   code: {
     type: String,
   },

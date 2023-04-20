@@ -20,17 +20,32 @@ exports.signUpUser = async (req, res) => {
     if (role !== "admin") {
       try {
         const login = new LoginModel(req.body);
+        console.log(login);
+        const token = generateToken(email, login?._id);
         await login.save();
         res.status(200).json({
           error: false,
           message: "User created successfully",
           data: login,
+          token: token,
         });
       } catch (error) {
-        res.status(200).json({
-          error: true,
-          message: error?.message,
-        });
+        if (error.keyValue.email != null) {
+          res.status(200).json({
+            error: true,
+            message: "Email already exists",
+          });
+        } else if (error.keyValue.username != null) {
+          res.status(200).json({
+            error: true,
+            message: "Username already exists",
+          });
+        } else {
+          res.status(200).json({
+            error: true,
+            message: "something went wrong",
+          });
+        }
       }
     } else {
       res.status(200).json({ error: true, message: "Invalid Role" });
@@ -46,35 +61,35 @@ exports.signUpUser = async (req, res) => {
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
   if (email && password) {
-    LoginModel.findOne({ email: req?.body?.email }, async (err, item) => {
-      if (item?.email && item?.password) {
-        const ValidPassword = await bcrypt.compare(
-          req.body.password,
-          item?.password
-        );
-        if (ValidPassword) {
-          const token = generateToken(item?.email, item?._id);
-          if (item?.status == "verified") {
-            res.status(200).json({
-              error: false,
-              data: item,
-              message: "Login successfully",
-              token: token,
-            });
-          } else {
-            // need to code for send code
-          }
+    const item = await LoginModel.findOne({ email: email }, "-code");
+    if (item?.email && item?.password) {
+      const ValidPassword = await bcrypt.compare(password, item?.password);
+      if (ValidPassword) {
+        const token = generateToken(item?.email, item?._id);
+        console.log(item);
+        if (item?.status == "verified") {
+          res.status(200).json({
+            error: false,
+            data: item,
+            message: "Login successfully",
+            token: token,
+          });
         } else {
-          res
-            .status(200)
-            .json({ error: true, message: "Invalid Email and Password" });
+          res.status(200).json({
+            error: true,
+            message: "Please verify your email",
+          });
         }
       } else {
         res
           .status(200)
-          .json({ error: true, message: "No user found with this email" });
+          .json({ error: true, message: "Invalid Email and Password" });
       }
-    });
+    } else {
+      res
+        .status(200)
+        .json({ error: true, message: "No user found with this email" });
+    }
   } else {
     res
       .status(200)
